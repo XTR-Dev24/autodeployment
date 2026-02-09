@@ -19,10 +19,73 @@ const {
     normalizeMessageContent,
     fetchLatestBaileysVersion,
     makeCacheableSignalKeyStore,
-    Browsers
+    Browsers,
+    jidNormalizedUser,
+    getContentType
 } = require("@whiskeysockets/baileys");
 
 const sessionDir = path.join(__dirname, "session");
+
+function getTextFromMessage(msg) {
+    try {
+        const m = normalizeMessageContent(msg.message);
+        if (!m) return "";
+        const type = getContentType(m);
+        if (type === 'conversation') return m.conversation || "";
+        if (type === 'extendedTextMessage') return m.extendedTextMessage?.text || "";
+        if (type === 'imageMessage') return m.imageMessage?.caption || "";
+        if (type === 'videoMessage') return m.videoMessage?.caption || "";
+        if (type === 'documentMessage') return m.documentMessage?.caption || "";
+        if (type === 'buttonsResponseMessage') return m.buttonsResponseMessage?.selectedButtonId || "";
+        if (type === 'listResponseMessage') return m.listResponseMessage?.singleSelectReply?.selectedRowId || "";
+        if (type === 'templateButtonReplyMessage') return m.templateButtonReplyMessage?.selectedId || "";
+        return "";
+    } catch (e) {
+        return "";
+    }
+}
+
+async function startBasicBot(Gifted) {
+    Gifted.ev.on('messages.upsert', async ({ messages }) => {
+        const msg = messages?.[0];
+        if (!msg || !msg.message) return;
+        if (msg.key?.fromMe) return;
+
+        const from = msg.key?.remoteJid;
+        if (!from || from.endsWith('@g.us')) return;
+
+        const text = (getTextFromMessage(msg) || "").trim();
+        if (!text) return;
+
+        const lower = text.toLowerCase();
+        const prefixMatch = /^[!.\/]/.test(text);
+        const cmd = prefixMatch ? lower.slice(1).split(/\s+/)[0] : "";
+
+        const reply = (t) => Gifted.sendMessage(from, { text: t }, { quoted: msg });
+
+        // Accept both "ping" and ".ping"
+        if (cmd === 'ping' || lower === 'ping') return reply('pong ✅');
+        if (cmd === 'alive' || cmd === 'status' || lower === 'alive') return reply('I am online ✅\nBasic bot mode is active.');
+        if (cmd === 'help' || cmd === 'menu' || lower === 'help') {
+            return reply(
+`*Buddy Session Bot (Basic Commands)*
+
+• .ping  – test response
+• .alive – bot status
+• .id    – show your JID
+• .time  – server time
+• .help  – this menu
+
+> Powered by XTR Developers`
+            );
+        }
+        if (cmd === 'id') return reply(`Your JID: ${from}`);
+        if (cmd === 'time') return reply(`Server time: ${new Date().toISOString()}`);
+
+        // Quick keyword replies (no prefix)
+        if (lower === 'hi' || lower === 'hello') return reply('Hey 👋');
+    });
+}
 
 router.get('/', async (req, res) => {
     const id = giftedId();
@@ -69,7 +132,13 @@ router.get('/', async (req, res) => {
                 num = num.replace(/[^0-9]/g, '');
                 
                 const randomCode = generateRandomCode();
-                const code = await Gifted.requestPairingCode(num, randomCode);
+                let code;
+                try {
+                    // Some Baileys versions accept only (phoneNumber). Keep a safe fallback.
+                    code = await Gifted.requestPairingCode(num, randomCode);
+                } catch (e) {
+                    code = await Gifted.requestPairingCode(num);
+                }
                 
                 if (!responseSent && !res.headersSent) {
                     res.json({ code: code });
@@ -82,10 +151,28 @@ router.get('/', async (req, res) => {
                 const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
-                    await Gifted.groupAcceptInvite("DdhFa7LbzeTKRG9hSHkzoW");
- 
-                    
-                    await delay(50000);
+                    // Start a minimal bot as soon as we connect
+                    try { await startBasicBot(Gifted); } catch (e) {}
+
+                    // Optional: auto-join a group via invite code or full invite link.
+// Set GROUP_INVITE in env to either an invite code (e.g. AbCdE...) or a full link.
+if (process.env.GROUP_INVITE) {
+    try {
+        const raw = String(process.env.GROUP_INVITE).trim();
+        const codeMatch = raw.match(/chat\.whatsapp\.com\/([0-9A-Za-z]+)/) || raw.match(/^([0-9A-Za-z]+)$/);
+        const code = codeMatch ? codeMatch[1] : null;
+        if (code) {
+            await Gifted.groupAcceptInvite(code);
+            console.log('[pair] Joined group via invite.');
+        } else {
+            console.warn('[pair] GROUP_INVITE is set but could not parse invite code.');
+        }
+    } catch (e) {
+        // WhatsApp may return 400 bad-request for invalid/expired links or if already in group.
+        console.warn('[pair] Could not join group via invite (ignored):', e?.message || e);
+    }
+}
+await delay(50000);
                     
                     let sessionData = null;
                     let attempts = 0;
@@ -127,7 +214,9 @@ router.get('/', async (req, res) => {
 
                         while (sendAttempts < maxSendAttempts && !sessionSent) {
                             try {
-                                Sess = await sendButtons(Gifted, Gifted.user.id, {
+                                const selfJid = jidNormalizedUser(Gifted.user.id);
+                        const targetJid = selfJid; // send to 'message to self' chat
+                        Sess = await sendButtons(Gifted, targetJid, {
             title: '',
             text: 'Buddy~' + b64data,
             footer: `> *Created by the XTR Developers*`,
@@ -171,11 +260,17 @@ router.get('/', async (req, res) => {
                         }
 
                         await delay(3000);
-                        await Gifted.ws.close();
+
+                        // Keep the connection alive for bot mode (about 10 minutes),
+                        // then close and cleanup to avoid resource leaks on the server.
+                        setTimeout(async () => {
+                            try { await Gifted.ws.close(); } catch (e) {}
+                            try { await cleanUpSession(); } catch (e) {}
+                        }, 10 * 60 * 1000);
                     } catch (sessionError) {
                         console.error("Session processing error:", sessionError);
                     } finally {
-                        await cleanUpSession();
+                        // cleanup happens after socket close (see setTimeout above)
                     }
                     
                 } else if (connection === "close" && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
