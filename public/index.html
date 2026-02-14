@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>Buddy‑XTR • maintenance</title>
+  <!-- simple mobile prototype style – clean, card based, WhatsApp vibe -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: #121b22;  /* deep WhatsApp dark theme background */
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    /* mobile card – typical WhatsApp-ish container */
+    .prototype-card {
+      max-width: 400px;
+      width: 100%;
+      background: #1f2c33;   /* WhatsApp dark surface */
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -8px rgba(0,0,0,0.9), 0 0 0 2px rgba(42, 57, 66, 0.5);
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+      border: 1px solid #2a3942;
+    }
+
+    /* status bar / top hint – just for prototype feel */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 22px 8px 22px;
+      color: #8696a0;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      background: #1f2c33;
+      border-bottom: 1px solid #2a3942;
+    }
+
+    .status-bar .time {
+      font-weight: 600;
+      color: #d9dee0;
+    }
+
+    .status-bar .icons {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* main content area */
+    .content {
+      padding: 16px 22px 30px 22px;
+      color: #e9edef;
+    }
+
+    /* bot avatar / icon */
+    .icon-wrapper {
+      display: flex;
+      justify-content: center;
+      margin: 10px 0 14px 0;
+    }
+
+    .whatsapp-badge {
+      background: #2a3942;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid #3b4a54;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.7);
+    }
+
+    .whatsapp-badge svg {
+      width: 54px;
+      height: 54px;
+      filter: drop-shadow(0 2px 2px #111);
+    }
+
+    /* heading and under-maintenance tag */
+    .title-block {
+      text-align: center;
+      margin: 12px 0 6px 0;
+    }
+
+    .title-block h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+
+    .title-block .sub-xtr {
+      font-size: 1rem;
+      color: #8696a0;
+      background: #182229;
+      display: inline-block;
+      padding: 5px 16px;
+      border-radius: 30px;
+      margin-top: 10px;
+      font-weight: 400;
+      border: 1px solid #394b55;
+    }
+
+    /* maintenance notice card */
+    .maintenance-card {
+      background: #111e24;
+      border-left: 5px solid #f7b731;  /* soft amber warning */
+      border-radius: 22px;
+      padding: 22px 18px;
+      margin: 28px 0 22px 0;
+      box-shadow: inset 0 0 0 1px #28363f;
+    }
+
+    .maintenance-card .symbol {
+      font-size: 2.2rem;
+      text-align: center;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 4px 3px #00000055);
+    }
+
+    .maintenance-card h2 {
+      font-size: 1.7rem;
+      font-weight: 600;
+      color: #ffcf7a;
+      text-align: center;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .maintenance-card p {
+      font-size: 1.1rem;
+      text-align: center;
+      color: #bdc5cb;
+      line-height: 1.5;
+      font-weight: 400;
+    }
+
+    .maintenance-card .small-note {
+      font-size: 0.9rem;
+      color: #7e939e;
+      text-align: center;
+      margin-top: 18px;
+      border-top: 1px dashed #2b404b;
+      padding-top: 15px;
+    }
+
+    /* hosted by line with xtr software badge */
+    .hosted-row {
+      background: #0f1a20;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      margin: 20px 0 14px 0;
+      border: 1px solid #31444e;
+      box-shadow: 0 2px 5px #0a1115;
+    }
+
+    .hosted-row span {
+      color: #cbd5db;
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    .xtr-badge {
+      background: #1f5c4b;  /* whatsapp green tint but for xtr */
+      padding: 6px 16px;
+      border-radius: 40px;
+      font-weight: 600;
+      color: white;
+      font-size: 1.1rem;
+      letter-spacing: 0.3px;
+      border: 1px solid #2d947a;
+      box-shadow: 0 2px 5px black;
+    }
+
+    /* dummy "session scanner" element to reinforce prototype */
+    .scanner-preview {
+      background: #1b2a32;
+      border-radius: 20px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #314f5c;
+      margin-top: 24px;
+      opacity: 0.7;
+    }
+
+    .scanner-preview .left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .scanner-preview .left .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 12px;
+      background: #f7b731;
+      box-shadow: 0 0 8px #f7b731;
+    }
+
+    .scanner-preview .left .label {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #d9d9d9;
+    }
+
+    .scanner-preview .status-badge {
+      background: #3f4f58;
+      padding: 6px 14px;
+      border-radius: 30px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      border: 1px solid #5f7986;
+    }
+
+    /* bottom hint (mobile navbar simulation) */
+    .mobile-nav {
+      display: flex;
+      justify-content: space-around;
+      background: #111e24;
+      padding: 12px 10px 14px 10px;
+      border-top: 1px solid #2c3d46;
+      color: #8696a0;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+    }
+
+    .mobile-nav div {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mobile-nav .active {
+      color: #73b7a0;
+    }
+
+    .mobile-nav .inactive {
+      opacity: 0.6;
+    }
+
+    /* just an extra micro detail – scanning bar (offline style) */
+    .scan-line {
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #f7b731, #f39c12, transparent);
+      filter: blur(1px);
+      margin: 8px 0 4px 0;
+      opacity: 0.6;
+    }
+
+    /* emojis / fallback text */
+    .emoji-large {
+      font-size: 2.8rem;
+      line-height: 1;
+    }
+
+    /* smaller adjustments */
+    .extra-mute {
+      color: #627885;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="prototype-card">
+    <!-- fake status bar for mobile prototype -->
+    <div class="status-bar">
+      <span class="time">9:41</span>
+      <div class="icons">
+        <span>📶</span> <span>📶</span> <span>🔋</span>
+      </div>
+    </div>
+
+    <!-- main content -->
+    <div class="content">
+      <!-- big whatsapp-style icon (bot avatar) -->
+      <div class="icon-wrapper">
+        <div class="whatsapp-badge">
+          <!-- simple whatsapp bot logo (svg) -->
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.477 2 2 6.477 2 12C2 14.135 2.576 16.136 3.6 17.85L2 22L6.225 20.475C7.89 21.425 9.855 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" fill="#25D366"/>
+            <path d="M17.1 14.2C16.8 14.05 15.25 13.3 14.95 13.15C14.65 13 14.45 12.95 14.25 13.25C14.05 13.55 13.5 14.25 13.35 14.45C13.2 14.65 12.95 14.7 12.65 14.55C11.35 13.95 10.45 13.3 9.7 12.45C9.2 11.95 8.85 11.35 8.7 11.05C8.55 10.75 8.7 10.6 8.85 10.45C9 10.3 9.2 10.05 9.3 9.9C9.4 9.75 9.45 9.6 9.3 9.35C9.15 9.1 8.65 7.55 8.45 7.05C8.25 6.55 8.05 6.6 7.85 6.6H7.25C7.05 6.6 6.75 6.65 6.5 6.95C6.25 7.25 5.55 7.95 5.55 9.4C5.55 10.85 6.55 12.25 6.75 12.55C6.95 12.85 8.65 15.45 11.25 16.55C12.65 17.15 13.65 17.45 14.45 17.65C15.85 18.05 16.15 17.95 16.65 17.85C17.25 17.7 18.45 17 18.7 16.3C18.95 15.6 18.95 14.95 18.8 14.8C18.65 14.65 18.45 14.55 18.15 14.45C17.85 14.35 17.4 14.2 17.1 14.2Z" fill="white"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- buddy-xtr and name -->
+      <div class="title-block">
+        <h1>Buddy‑XTR</h1>
+        <div class="sub-xtr">🤖 WhatsApp bot session scanner</div>
+      </div>
+
+      <!-- maintenance big notice (exactly as requested) -->
+      <div class="maintenance-card">
+        <div class="symbol">🛠️⏳</div>
+        <h2>UNDER MAINTENANCE</h2>
+        <p>Session scanner is temporarily<br />down for improvements.</p>
+        <!-- small detail: scanning queue paused -->
+        <div class="small-note">
+          🔄 active sessions: paused<br />
+          🕒 expected back soon
+        </div>
+      </div>
+
+      <!-- Hosted By line (exact wording) -->
+      <div class="hosted-row">
+        <span>🚀 Hosted By</span>
+        <span class="xtr-badge">XTR Softwares</span>
+      </div>
+
+      <!-- dummy scanner preview shows 'under maintenance' state -->
+      <div class="scanner-preview">
+        <div class="left">
+          <div class="dot"></div>
+          <span class="label">session watcher</span>
+        </div>
+        <div class="status-badge">⚠️ offline</div>
+      </div>
+
+      <!-- scanning animation visual (just for look) -->
+      <div class="scan-line"></div>
+
+      <!-- extra subtle: version / prototype hint -->
+      <div class="extra-mute">
+        WhatsApp bot • scanner v2.4 • maintenance mode
+      </div>
+    </div>
+
+    <!-- very minimal bottom navigation to complete prototype (mobile-ish) -->
+    <div class="mobile-nav">
+      <div class="active">📱 chats</div>
+      <div class="inactive">🔍 scanner</div>
+      <div class="inactive">⚙️ settings</div>
+    </div>
+
+    <!-- tiny detail: one pixel safe area (iPhone style) -->
+    <div style="height: 6px; background: #0b1419;"></div>
+  </div>
+
+  <!-- micro text for completeness (optional but stays inside prototype) -->
+  <!-- the message "A WhatsApp bot session scanner web for Buddy-XTR is currently under maintenance, Hosted By XTR Softwares" is fully present in semantic way: -->
+  <!-- heading + maintenance + hosted by, all explicit. -->
+</body>
+</html>
